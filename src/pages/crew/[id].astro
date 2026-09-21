@@ -1,0 +1,22 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const crew = await getCollection('crew');
+  return crew.map(member => ({ params:{ id:member.id }, props:{ member } }));
+}
+const { member } = Astro.props;
+const { Content } = await render(member);
+---
+<Base title={`${member.data.name} — FUSKY Crew`}>
+<header><div class="wrap"><div class="kicker">PERSONAL CREW BRIEF</div><h1>{member.data.name}</h1><div class="muted">{member.data.role}</div></div></header>
+<main><div class="wrap">
+<a class="back" href={import.meta.env.BASE_URL}>← Crew command</a>
+{member.data.equipment.length > 0 && <section class="card equipment-strip"><div class="pad">
+  <div class="role">Available equipment</div>
+  <strong>{member.data.equipment.join(' • ')}</strong>
+</div></section>}
+<section class="card"><div class="pad prose"><Content /></div></section>
+</div></main>
+</Base>

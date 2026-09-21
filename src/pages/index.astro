@@ -1,0 +1,83 @@
+---
+import Base from '../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+import stops from '../data/stops.json';
+const crew = (await getCollection('crew')).sort((a,b)=>a.data.priority-b.data.priority);
+const baseUrl = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : `${import.meta.env.BASE_URL}/`;
+const formatWindow = (start: string, end: string) => start === end ? start : `${start}–${end}`;
+---
+<Base title="FUSKY 55K Crew">
+<header><div class="wrap">
+<div class="kicker">FUSKY 55K • 03 OCT 2026</div>
+<h1>Crew command</h1>
+<div class="header-row"><div class="muted">Where to be, when to be there, and what each person needs to do.</div><div class="start-badge">START 09:00</div></div>
+</div></header>
+
+<main><div class="wrap">
+<nav class="quick-links" aria-label="Race resources">
+  <a class="quick-link" href={`${baseUrl}nutrition/`}><span>Runner plan</span><strong>Nutrition →</strong></a>
+  <a class="quick-link" href={`${baseUrl}equipment/`}><span>Camera plan</span><strong>Equipment →</strong></a>
+  <a class="quick-link" href={`${baseUrl}FUSKY-55K-2026.gpx`} download><span>Offline route</span><strong>Download GPX ↓</strong></a>
+</nav>
+<section class="card"><div id="map"></div></section>
+
+<div class="desktop2">
+<section class="card"><div class="pad">
+<h2 style="margin-top:0">Race timeline</h2>
+{stops.map(s => <div class="stop">
+  <strong>{s.name}</strong>
+  <span class="time">{formatWindow(s.windowStart, s.windowEnd)}</span>
+  <div class="mini">km {s.km} • {s.ele} m</div>
+</div>)}
+</div></section>
+
+<section class="card"><div class="pad">
+<h2 style="margin-top:0">Crew</h2>
+<div class="grid">
+{crew.map(c => <a class="crew-card" href={`${baseUrl}crew/${c.id}/`}>
+  <div class="role">{c.data.role}</div><h3>{c.data.name}</h3>
+  <div class="mini">{c.data.equipment.length ? c.data.equipment.join(' • ') : 'Equipment not recorded'}</div>
+  <div class="card-link">Open plan →</div>
+</a>)}
+</div>
+</div></section>
+</div>
+
+<section class="card"><div class="pad">
+<h2 style="margin-top:0">Coverage still needed</h2>
+<p class="muted">These are roles to assign from the TBD crew—not necessarily more people.</p>
+<div class="grid">
+  <div class="crew-card"><div class="role">Critical</div><h3>Command + timing</h3><div class="mini">One person watches live timing, owns the group chat and tells every unit when to move.</div></div>
+  <div class="crew-card"><div class="role">Critical</div><h3>Start + finish camera</h3><div class="mini">One person owns Cavalese: preparation, the 09:00 start and an uninterrupted finish shot.</div></div>
+  <div class="crew-card"><div class="role">Critical</div><h3>Mobile course camera</h3><div class="mini">One person covers selected points on the course without trying to reach every location.</div></div>
+  <div class="crew-card"><div class="role">Critical</div><h3>Dedicated drivers</h3><div class="mini">Ideally two: mountain/east-side transport and Cavalese/finish transport. Camera operators should not also coordinate every move.</div></div>
+  <div class="crew-card"><div class="role">Critical</div><h3>Nutrition + gear captain</h3><div class="mini">Own labelled reload bags, bottles, clothing and the emergency reserve; verify each hand-off is race-legal.</div></div>
+  <div class="crew-card"><div class="role">Optional</div><h3>Drone + media support</h3><div class="mini">Only if conditions and flight rules permit; otherwise move charged batteries, cards and backup equipment.</div></div>
+</div>
+</div></section>
+
+<section class="card"><div class="pad">
+<h2 style="margin-top:0">Live position</h2>
+<p class="muted">Optional module. A static GitHub Pages site can display live data, but it needs an external source such as Supabase, Firebase, Traccar, OwnTracks, or a race-tracking provider.</p>
+<a class="cta" href="#">Tracking not connected yet</a>
+</div></section>
+</div></main>
+
+<script>
+import L from 'leaflet';
+import track from '../data/track.json';
+import stops from '../data/stops.json';
+
+const map=L.map('map');
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+const line=L.polyline(track.map(p=>[p.lat,p.lng]),{color:'#ff5a36',weight:4,opacity:.95}).addTo(map);
+map.fitBounds(line.getBounds(),{padding:[18,18]});
+stops.forEach(s=>{
+  const time=s.windowStart===s.windowEnd?s.windowStart:`${s.windowStart}–${s.windowEnd}`;
+  L.circleMarker([s.lat,s.lng],{radius:7,color:'#fff',weight:2,fillColor:s.kind==='film'?'#6fb7ff':s.kind==='aid'?'#6ee7a8':'#ff5a36',fillOpacity:1})
+    .bindPopup(`<b>${s.name}</b><br>${time}<br>km ${s.km} • ${s.ele} m`).addTo(map)
+});
+</script>
+</Base>

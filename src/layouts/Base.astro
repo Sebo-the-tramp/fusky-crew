@@ -1,0 +1,9 @@
+---
+import '../styles/global.css';
+const { title='FUSKY Crew' } = Astro.props;
+---
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#090b0e"><title>{title}</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+</head><body><slot /></body></html>

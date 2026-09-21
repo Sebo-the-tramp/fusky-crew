@@ -1,0 +1,102 @@
+[
+  {
+    "name": "Cavalese Start",
+    "lat": 46.29066,
+    "lng": 11.46283,
+    "ele": 1000,
+    "km": 0.0,
+    "windowStart": "09:00",
+    "windowEnd": "09:00",
+    "kind": "start"
+  },
+  {
+    "name": "Tesero",
+    "lat": 46.29074000000001,
+    "lng": 11.511930000000001,
+    "ele": 1017,
+    "km": 6.32,
+    "windowStart": "09:20",
+    "windowEnd": "09:50",
+    "kind": "film"
+  },
+  {
+    "name": "Salime",
+    "lat": 46.30127,
+    "lng": 11.538900000000002,
+    "ele": 1283,
+    "km": 9.28,
+    "windowStart": "10:00",
+    "windowEnd": "10:40",
+    "kind": "aid"
+  },
+  {
+    "name": "La Bassa Pass 1",
+    "lat": 46.32544,
+    "lng": 11.53297,
+    "ele": 2165,
+    "km": 18.6,
+    "windowStart": "12:00",
+    "windowEnd": "12:45",
+    "kind": "film"
+  },
+  {
+    "name": "La Bassa Pass 2",
+    "lat": 46.32544,
+    "lng": 11.53297,
+    "ele": 2165,
+    "km": 23.41,
+    "windowStart": "12:35",
+    "windowEnd": "13:20",
+    "kind": "film"
+  },
+  {
+    "name": "Passo Feudo",
+    "lat": 46.34704000000001,
+    "lng": 11.55911,
+    "ele": 2161,
+    "km": 28.52,
+    "windowStart": "13:30",
+    "windowEnd": "14:45",
+    "kind": "film"
+  },
+  {
+    "name": "Cima Valbona",
+    "lat": 46.36130000000001,
+    "lng": 11.55921,
+    "ele": 2671,
+    "km": 31.08,
+    "windowStart": "14:20",
+    "windowEnd": "15:40",
+    "kind": "film"
+  },
+  {
+    "name": "Baito Scofa / Pampeago",
+    "lat": 46.35025,
+    "lng": 11.54691,
+    "ele": 1998,
+    "km": 37.77,
+    "windowStart": "15:30",
+    "windowEnd": "16:45",
+    "kind": "aid"
+  },
+  {
+    "name": "Stava",
+    "lat": 46.319610000000004,
+    "lng": 11.500710000000002,
+    "ele": 1275,
+    "km": 44.52,
+    "windowStart": "16:30",
+    "windowEnd": "18:00",
+    "kind": "aid"
+  },
+  {
+    "name": "Cavalese Finish",
+    "lat": 46.29066,
+    "lng": 11.46283,
+    "ele": 1000,
+    "km": 52.41,
+    "windowStart": "18:00",
+    "windowEnd": "22:00",
+    "kind": "finish"
+  }
+]

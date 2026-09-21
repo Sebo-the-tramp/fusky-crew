@@ -1,0 +1,81 @@
+---
+import Base from '../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+
+const crew = (await getCollection('crew')).sort((a,b) => a.data.priority - b.data.priority);
+const baseUrl = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : `${import.meta.env.BASE_URL}/`;
+---
+<Base title="Equipment — FUSKY 55K">
+<header><div class="wrap">
+  <div class="kicker">FUSKY 55K • CAMERA PLAN</div>
+  <h1>Equipment check</h1>
+  <div class="muted">What we have, what we still need to ask, and how to make the footage fit together.</div>
+</div></header>
+
+<main><div class="wrap">
+  <a class="back" href={baseUrl}>← Crew command</a>
+
+  <section class="card"><div class="pad">
+    <div class="eyebrow">Current inventory</div>
+    <h2>Who has what</h2>
+    <div class="grid">
+      {crew.map(member => <a class="crew-card" href={`${baseUrl}crew/${member.id}/`}>
+        <div class:list={["role", member.data.equipment.length ? "status-known" : "status-open"]}>{member.data.equipment.length ? 'Recorded' : 'Still ask'}</div>
+        <h3>{member.data.name}</h3>
+        <div class="mini">{member.data.equipment.length ? member.data.equipment.join(' • ') : 'Camera/phone, model, storage, batteries and accessories unknown'}</div>
+      </a>)}
+    </div>
+  </div></section>
+
+  <section class="card"><div class="pad">
+    <div class="eyebrow">Proposed camera teams</div>
+    <h2>Maximum coverage, distinct jobs</h2>
+    <div class="grid">
+      <div class="crew-card coverage-card"><div class="role">David</div><h3>Aerial + establishing</h3><div class="mini">Drone wides when practical; iPhone 16 for ground details and backup.</div><span class="camera-label">Camera A</span></div>
+      <div class="crew-card coverage-card"><div class="role">Leo</div><h3>Long lens + hero shots</h3><div class="mini">Reflex for stable approaches and faces; iPhone 14 for wide and moving footage.</div><span class="camera-label">Camera B</span></div>
+      <div class="crew-card coverage-card"><div class="role">Stefania / Dario</div><h3>Two-angle mobile unit</h3><div class="mini">One locked wide angle, one close/detail angle. Split locations only when transport is safe and simple.</div><span class="camera-label">Cameras C + D</span></div>
+      <div class="crew-card coverage-card"><div class="role">Matilde</div><h3>Finish reaction</h3><div class="mini">Secondary finish angle, then immediate post-finish and family footage without delaying runner care.</div><span class="camera-label">Camera E</span></div>
+    </div>
+  </div></section>
+
+  <div class="desktop2">
+    <section class="card"><div class="pad">
+      <div class="eyebrow">Ask every person</div>
+      <h2>Equipment audit</h2>
+      <ul class="checklist">
+        <li>Exact phone/camera/drone model</li>
+        <li>Available storage or memory cards</li>
+        <li>Battery count and power banks</li>
+        <li>Lenses and optical zoom range</li>
+        <li>Tripod, monopod, gimbal or phone clamp</li>
+        <li>Rain protection and warm gloves</li>
+        <li>Charging cables and car chargers</li>
+        <li>Comfort filming landscape orientation</li>
+      </ul>
+    </div></section>
+
+    <section class="card"><div class="pad">
+      <div class="eyebrow">Before race day</div>
+      <h2>Recording standard</h2>
+      <ul>
+        <li>Choose one shared frame rate after testing every device.</li>
+        <li>Frame the primary race film horizontally.</li>
+        <li>Clean lenses and synchronise device clocks.</li>
+        <li>Use Do Not Disturb and disable distracting notifications.</li>
+        <li>Hold every shot for ten seconds before moving.</li>
+        <li>Do not digitally zoom; move or use an optical lens.</li>
+        <li>Record a five-second spoken location label after each major scene.</li>
+      </ul>
+      <p class="note">A 1080p final edit lets the reflex and Full HD phones match. Devices that can record 4K may still do so for cropping, after storage and battery tests.</p>
+    </div></section>
+  </div>
+
+  <section class="card"><div class="pad">
+    <div class="eyebrow">Still unrecorded</div>
+    <h2>Daniele, Lorenzo and Marco/Silvana</h2>
+    <p class="muted">Their equipment is the next question. Even an older phone can be valuable as a locked-off wide camera, behind-the-scenes camera or finish reaction camera.</p>
+  </div></section>
+</div></main>
+</Base>

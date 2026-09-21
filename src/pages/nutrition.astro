@@ -1,0 +1,129 @@
+---
+import Base from '../layouts/Base.astro';
+
+const baseUrl = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : `${import.meta.env.BASE_URL}/`;
+---
+<Base title="Nutrition — FUSKY 55K">
+<header><div class="wrap">
+  <div class="kicker">FUSKY 55K • RUNNER PLAN</div>
+  <h1>Race nutrition</h1>
+  <div class="header-row"><div class="muted">A simple, repeatable plan from the 09:00 start to Cavalese.</div><div class="start-badge">DRAFT • TEST FIRST</div></div>
+</div></header>
+
+<main><div class="wrap">
+  <a class="back" href={baseUrl}>← Crew command</a>
+
+  <section class="card nutrition-hero"><div class="pad">
+    <div class="eyebrow">Working target</div>
+    <div class="big-target"><span id="total-carbs">715</span> g <small>carbohydrate total</small></div>
+    <p class="muted">Based on <strong id="duration-copy">11</strong> hours at <strong id="target-copy">65</strong> g/hour. Start fueling early—do not wait until you feel empty.</p>
+    <div class="metric-grid">
+      <div class="metric"><strong>09:00</strong><span>race start</span></div>
+      <div class="metric"><strong>20–25 min</strong><span>fuel rhythm</span></div>
+      <div class="metric"><strong>60–75 g/h</strong><span>initial tested range</span></div>
+    </div>
+  </div></section>
+
+  <div class="desktop2">
+    <section class="card"><div class="pad">
+      <div class="eyebrow">Adjust the draft</div>
+      <h2>Race-bag calculator</h2>
+      <div class="form-grid">
+        <div class="field"><label for="duration">Expected race duration (hours)</label><input id="duration" type="number" min="7" max="15" step="0.5" value="11" inputmode="decimal"></div>
+        <div class="field"><label for="carbs">Carbohydrate target (g/hour)</label><input id="carbs" type="number" min="40" max="90" step="5" value="65" inputmode="numeric"></div>
+      </div>
+      <div class="pack-list" aria-live="polite">
+        <div class="pack-item"><span>Gels at 25 g each</span><strong id="gel-count">12</strong></div>
+        <div class="pack-item"><span>Drink-mix servings at 30 g each</span><strong id="drink-count">9</strong></div>
+        <div class="pack-item"><span>Food/chew portions at 25 g each</span><strong id="food-count">8</strong></div>
+        <div class="pack-item"><span>Planned carbohydrate packed</span><strong><span id="packed-carbs">770</span> g</strong></div>
+      </div>
+      <p class="mini">The split is approximately 40% gels, 35% drink mix and 25% food. Replace each item using the carbohydrate number on its label; crew reload bags count toward the total.</p>
+    </div></section>
+
+    <section class="card"><div class="pad">
+      <div class="eyebrow">Every hour</div>
+      <h2>Simple rhythm</h2>
+      <div class="fuel-timeline">
+        <div class="fuel-step"><time>:00</time><div><strong>Carbohydrate</strong><span class="mini">20–25 g: gel, chews or easy food</span></div></div>
+        <div class="fuel-step"><time>:20</time><div><strong>Carbohydrate</strong><span class="mini">20–25 g; drink according to thirst</span></div></div>
+        <div class="fuel-step"><time>:40</time><div><strong>Carbohydrate</strong><span class="mini">20–25 g; change texture/flavour</span></div></div>
+      </div>
+      <p class="note">Use glucose + fructose / “multiple transportable carbohydrate” products if taking more than 60 g/hour. Train the exact products and quantities first.</p>
+    </div></section>
+  </div>
+
+  <section class="card"><div class="pad">
+    <div class="eyebrow">Race morning</div>
+    <h2>Before the 09:00 start</h2>
+    <div class="fuel-timeline">
+      <div class="fuel-step"><time>05:30–06:30</time><div><strong>Familiar carbohydrate-rich breakfast</strong><span class="mini">Use the meal already proven in long training. Keep fibre and fat modest if they upset your stomach.</span></div></div>
+      <div class="fuel-step"><time>07:30</time><div><strong>Begin normal sipping</strong><span class="mini">Arrive hydrated, but do not force large volumes.</span></div></div>
+      <div class="fuel-step"><time>08:35–08:45</time><div><strong>Optional 20–30 g carbohydrate</strong><span class="mini">Only a familiar pre-start gel, chews or drink.</span></div></div>
+      <div class="fuel-step"><time>09:20</time><div><strong>First race fuel</strong><span class="mini">Begin the rhythm before hunger or low energy appears.</span></div></div>
+    </div>
+  </div></section>
+
+  <section class="card"><div class="pad">
+    <div class="eyebrow">Crew hand-offs</div>
+    <h2>Reload plan</h2>
+    <div class="grid">
+      <div class="crew-card"><div class="role">La Bassa • km 18.6 / 23.4</div><h3>Primary reload</h3><div class="mini">Fresh gels/food, drink mix, one flavour change, weather layer. Personal aid only where race rules permit.</div></div>
+      <div class="crew-card"><div class="role">Pampeago • km 37.8</div><h3>Late-race reload</h3><div class="mini">Easy-to-swallow fuel, savoury option, reserve gel and tested caffeine only if already planned.</div></div>
+      <div class="crew-card"><div class="role">Stava • km 44.5</div><h3>Finish reserve</h3><div class="mini">Enough carbohydrate to Cavalese plus one emergency spare; confirm stomach and alertness.</div></div>
+      <div class="crew-card"><div class="role">Cavalese • finish</div><h3>Recovery bag</h3><div class="mini">Water, carbohydrate, protein-containing food, warm layer and dry clothes.</div></div>
+    </div>
+  </div></section>
+
+  <section class="card"><div class="pad">
+    <div class="eyebrow">Hydration and safety</div>
+    <h2>Do not guess this on race day</h2>
+    <ul>
+      <li>Drink to thirst or use a fluid plan measured during similar long runs and weather.</li>
+      <li>Do not force water and do not finish heavier than you started; overdrinking can cause dangerous hyponatraemia.</li>
+      <li>Use sodium according to your tested sweat plan and product labels. Needs vary widely.</li>
+      <li>Never introduce a new gel, drink, solid food, electrolyte dose or caffeine strategy during the race.</li>
+    </ul>
+    <p class="note danger"><strong>Stop and seek race medical help</strong> for confusion, severe headache, repeated vomiting, loss of coordination, chest pain, fainting, or rapidly worsening symptoms. This page is a planning draft, not medical advice.</p>
+  </div></section>
+
+  <section class="card"><div class="pad">
+    <div class="eyebrow">Evidence</div>
+    <h2>Why these targets</h2>
+    <p class="muted">Official endurance guidance supports up to 90 g carbohydrate/hour for events longer than 2.5–3 hours, using mixed carbohydrate sources at higher intakes. The practical target here starts lower because gut tolerance is individual and must be trained.</p>
+    <ul class="source-list">
+      <li><a href="https://www.ausport.gov.au/ais/nutrition/supplements/group_a/sports-foods2/sports-drink/how-and-when-do-i-use-it" target="_blank" rel="noreferrer">Australian Institute of Sport — sports drink and carbohydrate guidance</a></li>
+      <li><a href="https://worldathletics.org/download/download?filename=1b7e9eb4-45b4-4363-9eeb-142dd0ad5bcb.pdf&urlslug=Sports+nutrition+infographic+-+Carbohydrate+intakes+in+endurance+events" target="_blank" rel="noreferrer">World Athletics — carbohydrate intake in endurance events</a></li>
+    </ul>
+  </div></section>
+</div></main>
+
+<script>
+  const durationInput = document.querySelector<HTMLInputElement>('#duration');
+  const carbsInput = document.querySelector<HTMLInputElement>('#carbs');
+
+  function updatePlan() {
+    if (!durationInput || !carbsInput) return;
+    const duration = Math.min(15, Math.max(7, Number(durationInput.value) || 11));
+    const hourlyCarbs = Math.min(90, Math.max(40, Number(carbsInput.value) || 65));
+    const total = Math.round(duration * hourlyCarbs);
+    const gels = Math.ceil(total * .4 / 25);
+    const drinks = Math.ceil(total * .35 / 30);
+    const food = Math.ceil(total * .25 / 25);
+    const packed = gels * 25 + drinks * 30 + food * 25;
+
+    document.querySelector('#total-carbs')!.textContent = String(total);
+    document.querySelector('#duration-copy')!.textContent = String(duration);
+    document.querySelector('#target-copy')!.textContent = String(hourlyCarbs);
+    document.querySelector('#gel-count')!.textContent = String(gels);
+    document.querySelector('#drink-count')!.textContent = String(drinks);
+    document.querySelector('#food-count')!.textContent = String(food);
+    document.querySelector('#packed-carbs')!.textContent = String(packed);
+  }
+
+  durationInput?.addEventListener('input', updatePlan);
+  carbsInput?.addEventListener('input', updatePlan);
+</script>
+</Base>
