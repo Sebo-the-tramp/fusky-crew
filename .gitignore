@@ -6,3 +6,5 @@ dist/
 .env
 .env.*
 !.env.example
+backend/.venv/
+backend/secrets/

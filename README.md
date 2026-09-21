@@ -40,10 +40,15 @@ For a custom domain or path, set `SITE_URL` and `BASE_PATH` when building.
 
 ## Live location
 
-GitHub Pages is read-only. Live location therefore needs an external data source.
+GitHub Pages is read-only, so live location uses the separate protected FastAPI service in
+`backend/`. The `/live/` page polls that service and displays the latest report with Leaflet.
 
-Recommended architecture:
+Architecture:
 
-Runner phone / tracker → Supabase table → static site reads latest point.
+Find My network → FindMy.py → authenticated FastAPI → Leaflet client
 
-For race reliability, a dedicated tracker/app is better than browser geolocation because mobile browsers may suspend background updates.
+Start with [backend/README.md](backend/README.md). Never commit the Apple account session or
+accessory JSON: both are ignored under `backend/secrets/`.
+
+Find My updates are delayed reports, not continuous GPS. For race reliability and safety, keep the
+official event tracker and direct phone contact as the primary systems.

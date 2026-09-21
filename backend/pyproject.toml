@@ -1,0 +1,27 @@
+[project]
+name = "fusky-tracker-backend"
+version = "0.1.0"
+description = "Protected location bridge for the FUSKY crew site"
+requires-python = ">=3.11,<3.15"
+dependencies = [
+  "fastapi>=0.116,<1",
+  "findmy==0.10.2",
+  "python-dotenv>=1.1,<2",
+  "uvicorn[standard]>=0.35,<1",
+]
+
+[dependency-groups]
+dev = [
+  "httpx>=0.28,<1",
+  "pytest>=8.4,<10",
+  "ruff>=0.12,<1",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

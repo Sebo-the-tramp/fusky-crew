@@ -1,0 +1,1 @@
+"""FUSKY protected location bridge."""
