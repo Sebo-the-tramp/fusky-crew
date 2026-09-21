@@ -16,7 +16,13 @@ uv sync
 uv run uvicorn app.main:app --env-file .env --host 0.0.0.0 --port 8000
 ```
 
-Change `TRACKING_ACCESS_TOKEN` in `.env`, then test:
+Generate a token (it is your own shared secret, not something supplied by Apple or GitHub):
+
+```bash
+openssl rand -hex 32
+```
+
+Copy the result into `TRACKING_ACCESS_TOKEN` in `.env`, then test:
 
 ```bash
 curl http://127.0.0.1:8000/health
@@ -88,8 +94,21 @@ container, restrict inbound access, and back up the state securely. Do not put A
 the crew bearer token in GitHub Pages variables prefixed with `PUBLIC_`; those values are bundled
 into public JavaScript.
 
-The frontend accepts the API URL and token interactively. The API URL is kept in `localStorage`;
-the token exists only in the current tab's memory.
+The frontend accepts the API URL and token interactively. Use **Create crew link** to generate a
+capability URL in this format:
+
+```text
+http://YOUR_MAC_LAN_IP:4321/fusky-crew/live/#api=http%3A%2F%2FYOUR_MAC_LAN_IP%3A8000&token=YOUR_TOKEN
+```
+
+The recipient's page reads the URL fragment, removes it from the address bar, and connects
+automatically. URL fragments are not sent to the web server or in HTTP referrer headers, but the
+original URL still contains the bearer token and may remain in chat, clipboard, browser sync or
+screenshots. Treat the link as a password. Anyone holding it can read the location; change
+`TRACKING_ACCESS_TOKEN` and restart the backend to revoke all existing crew links.
+
+The API URL is otherwise kept in `localStorage`; a manually entered token exists only in the
+current tab's memory.
 
 ## Test
 

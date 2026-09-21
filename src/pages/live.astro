@@ -22,9 +22,21 @@ const defaultApiUrl = import.meta.env.PUBLIC_TRACKING_API_URL ?? '';
     <div id="tracker-config" class="connect-grid" data-default-api={defaultApiUrl}>
       <div class="field"><label for="api-url">Tracking API URL</label><input id="api-url" type="url" inputmode="url" placeholder="https://tracker.example.com"></div>
       <div class="field"><label for="access-token">Crew access token</label><input id="access-token" type="password" autocomplete="off" placeholder="Shared privately with crew"></div>
-      <div class="connect-actions"><button id="connect" class="button" type="button">Connect</button><span id="connection-state" class="connection-state" data-state="idle">Not connected</span></div>
+      <div class="connect-actions">
+        <button id="connect" class="button" type="button">Connect</button>
+        <button id="create-share-link" class="button button-secondary" type="button">Create crew link</button>
+        <span id="connection-state" class="connection-state" data-state="idle">Not connected</span>
+      </div>
+      <div id="share-field" class="field" hidden>
+        <label for="share-url">Private crew link — anyone with this link can see the position</label>
+        <div class="share-row">
+          <input id="share-url" type="text" readonly>
+          <button id="copy-share-link" class="button button-secondary" type="button">Copy</button>
+        </div>
+      </div>
     </div>
-    <p class="privacy-callout">The API address is saved on this device. The access token lasts only for this browser tab and is never committed to the website.</p>
+    <p class="privacy-callout">A crew link stores the API address and token after <code>#</code>, so they are not sent to GitHub Pages or included in HTTP referrer headers. The page removes them from the address bar after opening. Anyone who keeps or forwards the original link has access until you rotate the token.</p>
+    <p class="privacy-callout">For LAN use, share the page served from your Mac over HTTP. The public HTTPS GitHub page can only connect to an HTTPS tracking API.</p>
   </div></section>
 
   <section class="card"><div id="live-map" aria-label="Map showing latest runner position"></div></section>
@@ -48,6 +60,10 @@ const config = document.querySelector<HTMLElement>('#tracker-config');
 const apiInput = document.querySelector<HTMLInputElement>('#api-url');
 const tokenInput = document.querySelector<HTMLInputElement>('#access-token');
 const connectButton = document.querySelector<HTMLButtonElement>('#connect');
+const createShareButton = document.querySelector<HTMLButtonElement>('#create-share-link');
+const shareField = document.querySelector<HTMLElement>('#share-field');
+const shareInput = document.querySelector<HTMLInputElement>('#share-url');
+const copyShareButton = document.querySelector<HTMLButtonElement>('#copy-share-link');
 const stateNode = document.querySelector<HTMLElement>('#connection-state');
 const map = L.map('live-map');
 const route = L.polyline(track.map(point => [point.lat, point.lng]), { color:'#ff5a36', weight:4, opacity:.7 }).addTo(map);
@@ -66,6 +82,16 @@ let lastReportTime: Date | undefined;
 
 const savedApi = localStorage.getItem('fusky-tracking-api');
 if (apiInput) apiInput.value = savedApi || config?.dataset.defaultApi || '';
+
+const sharedParams = new URLSearchParams(window.location.hash.slice(1));
+const sharedApi = sharedParams.get('api')?.trim() ?? '';
+const sharedToken = sharedParams.get('token') ?? '';
+const hasSharedConnection = Boolean(sharedApi && sharedToken);
+if (hasSharedConnection) {
+  if (apiInput) apiInput.value = sharedApi;
+  if (tokenInput) tokenInput.value = sharedToken;
+  history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+}
 
 function setState(message: string, state: 'idle' | 'loading' | 'live' | 'error') {
   if (!stateNode) return;
@@ -134,11 +160,51 @@ async function fetchLocation() {
   }
 }
 
-connectButton?.addEventListener('click', () => {
+function startPolling() {
   if (pollTimer) window.clearInterval(pollTimer);
   void fetchLocation();
   pollTimer = window.setInterval(() => void fetchLocation(), 30_000);
+}
+
+function crewLink() {
+  const api = apiInput?.value.trim() ?? '';
+  const token = tokenInput?.value ?? '';
+  if (!api || !token) throw new Error('Enter the API URL and access token first.');
+
+  const parsedApi = new URL(api);
+  if (!['http:', 'https:'].includes(parsedApi.protocol)) throw new Error('The API URL must start with http:// or https://.');
+
+  const pageUrl = new URL(window.location.href);
+  pageUrl.hash = new URLSearchParams({ api: parsedApi.toString().replace(/\/$/, ''), token }).toString();
+  return pageUrl.toString();
+}
+
+async function copyCrewLink() {
+  if (!shareInput?.value) return;
+  try {
+    await navigator.clipboard.writeText(shareInput.value);
+    setState('Crew link copied.', 'live');
+  } catch {
+    shareInput.focus();
+    shareInput.select();
+    setState('Crew link ready — copy the selected text.', 'idle');
+  }
+}
+
+connectButton?.addEventListener('click', startPolling);
+createShareButton?.addEventListener('click', () => {
+  try {
+    const link = crewLink();
+    if (shareInput) shareInput.value = link;
+    if (shareField) shareField.hidden = false;
+    void copyCrewLink();
+  } catch (error) {
+    setState(error instanceof Error ? error.message : 'Unable to create the crew link.', 'error');
+  }
 });
+copyShareButton?.addEventListener('click', () => void copyCrewLink());
+
+if (hasSharedConnection) startPolling();
 window.setInterval(refreshAge, 5_000);
 </script>
 </Base>
