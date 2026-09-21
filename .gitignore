@@ -8,3 +8,5 @@ dist/
 !.env.example
 backend/.venv/
 backend/secrets/
+__pycache__/
+*.py[cod]
