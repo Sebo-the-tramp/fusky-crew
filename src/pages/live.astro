@@ -19,7 +19,7 @@ const defaultApiUrl = import.meta.env.PUBLIC_TRACKING_API_URL ?? '';
   <section class="card"><div class="pad">
     <div class="eyebrow">Backend connection</div>
     <h2>Connect this device</h2>
-    <div id="tracker-config" class="connect-grid" data-default-api={defaultApiUrl}>
+    <div id="tracker-config" class="connect-grid" data-default-api={defaultApiUrl} data-home-url={baseUrl}>
       <div class="field"><label for="api-url">Tracking API URL</label><input id="api-url" type="url" inputmode="url" placeholder="https://tracker.example.com"></div>
       <div class="field"><label for="access-token">Crew access token</label><input id="access-token" type="password" autocomplete="off" placeholder="Shared privately with crew"></div>
       <div class="connect-actions">
@@ -174,7 +174,7 @@ function crewLink() {
   const parsedApi = new URL(api);
   if (!['http:', 'https:'].includes(parsedApi.protocol)) throw new Error('The API URL must start with http:// or https://.');
 
-  const pageUrl = new URL(window.location.href);
+  const pageUrl = new URL(config?.dataset.homeUrl ?? '/', window.location.origin);
   pageUrl.hash = new URLSearchParams({ api: parsedApi.toString().replace(/\/$/, ''), token }).toString();
   return pageUrl.toString();
 }

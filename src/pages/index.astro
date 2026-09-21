@@ -21,7 +21,30 @@ const formatWindow = (start: string, end: string) => start === end ? start : `${
   <a class="quick-link" href={`${baseUrl}equipment/`}><span>Camera plan</span><strong>Equipment →</strong></a>
   <a class="quick-link" href={`${baseUrl}FUSKY-55K-2026.gpx`} download><span>Offline route</span><strong>Download GPX ↓</strong></a>
 </nav>
+<section class="card countdown-card" aria-labelledby="countdown-title">
+  <div class="pad">
+    <div class="eyebrow">3 October 2026 • 09:00 CEST</div>
+    <h2 id="countdown-title">Race starts in</h2>
+    <div id="race-countdown" class="countdown" data-start="2026-10-03T09:00:00+02:00" aria-live="polite">
+      <div><strong id="countdown-days">—</strong><span>Days</span></div>
+      <div><strong id="countdown-hours">—</strong><span>Hours</span></div>
+      <div><strong id="countdown-minutes">—</strong><span>Minutes</span></div>
+      <div><strong id="countdown-seconds">—</strong><span>Seconds</span></div>
+    </div>
+  </div>
+</section>
 <section class="card"><div id="map"></div></section>
+
+<section id="home-live-position" class="card" hidden><div class="pad">
+  <div class="eyebrow">Protected live position</div>
+  <div class="live-readout">
+    <div class="live-value"><span>Device</span><strong id="home-device-name">—</strong></div>
+    <div class="live-value"><span>Report age</span><strong id="home-report-age">—</strong></div>
+    <div class="live-value"><span>Accuracy</span><strong id="home-accuracy">—</strong></div>
+  </div>
+  <p id="home-reported-at" class="mini">Waiting for a location report.</p>
+  <p class="note">Find My reports can be delayed. Never use this screen as the only safety system.</p>
+</div></section>
 
 <div class="desktop2">
 <section class="card"><div class="pad">
@@ -58,11 +81,6 @@ const formatWindow = (start: string, end: string) => start === end ? start : `${
 </div>
 </div></section>
 
-<section class="card"><div class="pad">
-<h2 style="margin-top:0">Live position</h2>
-<p class="muted">Connect the protected tracking backend to show the latest report on the course map. Apple credentials and accessory keys remain server-side.</p>
-<a class="cta" href={`${baseUrl}live/`}>Open live tracking →</a>
-</div></section>
 </div></main>
 
 <script>
@@ -79,5 +97,116 @@ stops.forEach(s=>{
   L.circleMarker([s.lat,s.lng],{radius:7,color:'#fff',weight:2,fillColor:s.kind==='film'?'#6fb7ff':s.kind==='aid'?'#6ee7a8':'#ff5a36',fillOpacity:1})
     .bindPopup(`<b>${s.name}</b><br>${time}<br>km ${s.km} • ${s.ele} m`).addTo(map)
 });
+
+const countdown = document.querySelector<HTMLElement>('#race-countdown');
+const countdownTitle = document.querySelector<HTMLElement>('#countdown-title');
+const raceStart = new Date(countdown?.dataset.start ?? '').getTime();
+
+function updateCountdown() {
+  const remaining = raceStart - Date.now();
+  if (!Number.isFinite(raceStart)) return;
+  if (remaining <= 0) {
+    if (countdownTitle) countdownTitle.textContent = 'Race underway';
+    countdown?.setAttribute('hidden', '');
+    return;
+  }
+
+  const totalSeconds = Math.floor(remaining / 1000);
+  const values = {
+    days: Math.floor(totalSeconds / 86400),
+    hours: Math.floor((totalSeconds % 86400) / 3600),
+    minutes: Math.floor((totalSeconds % 3600) / 60),
+    seconds: totalSeconds % 60
+  };
+  for (const [unit, value] of Object.entries(values)) {
+    const node = document.querySelector(`#countdown-${unit}`);
+    if (node) node.textContent = String(value).padStart(2, '0');
+  }
+}
+
+updateCountdown();
+window.setInterval(updateCountdown, 1_000);
+
+const liveSection = document.querySelector<HTMLElement>('#home-live-position');
+const sharedParams = new URLSearchParams(window.location.hash.slice(1));
+const sharedApi = sharedParams.get('api')?.trim() ?? '';
+const sharedToken = sharedParams.get('token') ?? '';
+let liveMarker: L.CircleMarker | undefined;
+let accuracyCircle: L.Circle | undefined;
+let lastReportTime: Date | undefined;
+
+function endpointFor(base: string) {
+  const clean = base.replace(/\/$/, '');
+  return clean.endsWith('/api/location') ? clean : `${clean}/api/location`;
+}
+
+function ageLabel(date: Date) {
+  const seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+}
+
+function refreshAge() {
+  const node = document.querySelector('#home-report-age');
+  if (node && lastReportTime) node.textContent = ageLabel(lastReportTime);
+}
+
+async function fetchSharedLocation() {
+  try {
+    const response = await fetch(endpointFor(sharedApi), {
+      headers: { Authorization: `Bearer ${sharedToken}` },
+      cache: 'no-store'
+    });
+    if (!response.ok) return;
+
+    const location = await response.json();
+    if (!Number.isFinite(location.lat) || !Number.isFinite(location.lon)) return;
+
+    const point = L.latLng(location.lat, location.lon);
+    const radius = Number(location.accuracy_m) || 0;
+    if (!liveMarker) {
+      liveMarker = L.circleMarker(point, {
+        radius: 10,
+        color: '#fff',
+        weight: 3,
+        fillColor: '#6ee7a8',
+        fillOpacity: 1
+      }).bindPopup(`<b>${location.device_name}</b><br>Latest Find My report`).addTo(map);
+    } else {
+      liveMarker.setLatLng(point);
+    }
+
+    accuracyCircle?.remove();
+    if (radius > 0) {
+      accuracyCircle = L.circle(point, {
+        radius,
+        color: '#6ee7a8',
+        weight: 1,
+        fillOpacity: .08
+      }).addTo(map);
+    }
+
+    lastReportTime = new Date(location.reported_at);
+    document.querySelector('#home-device-name')!.textContent = location.device_name;
+    document.querySelector('#home-accuracy')!.textContent = radius ? `±${radius} m` : 'Unknown';
+    document.querySelector('#home-reported-at')!.textContent =
+      `Reported ${lastReportTime.toLocaleString()}${location.stale ? ' • STALE' : ''}`;
+    refreshAge();
+    if (liveSection?.hidden) {
+      liveSection.hidden = false;
+      map.setView(point, 14);
+    }
+  } catch {
+    // Invalid, unreachable, or expired share links reveal no tracking UI.
+  }
+}
+
+if (sharedApi && sharedToken) {
+  history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+  void fetchSharedLocation();
+  window.setInterval(() => void fetchSharedLocation(), 30_000);
+  window.setInterval(refreshAge, 5_000);
+}
 </script>
 </Base>
