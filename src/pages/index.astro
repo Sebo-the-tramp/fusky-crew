@@ -155,7 +155,10 @@ function refreshAge() {
 async function fetchSharedLocation() {
   try {
     const response = await fetch(endpointFor(sharedApi), {
-      headers: { Authorization: `Bearer ${sharedToken}` },
+      headers: {
+        Authorization: `Bearer ${sharedToken}`,
+        skip_zrok_interstitial: 'true'
+      },
       cache: 'no-store'
     });
     if (!response.ok) return;

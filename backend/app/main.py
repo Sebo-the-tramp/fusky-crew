@@ -38,7 +38,7 @@ def create_app(
         allow_origins=list(config.allowed_origins),
         allow_credentials=False,
         allow_methods=["GET", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=["Authorization", "Content-Type", "skip_zrok_interstitial"],
         max_age=600,
     )
 

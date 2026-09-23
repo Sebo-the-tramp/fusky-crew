@@ -128,7 +128,10 @@ async function fetchLocation() {
   setState('Fetching…', 'loading');
   try {
     const response = await fetch(endpointFor(api), {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        skip_zrok_interstitial: 'true'
+      },
       cache: 'no-store'
     });
     if (!response.ok) throw new Error(response.status === 401 ? 'Access token rejected.' : `Backend returned ${response.status}.`);

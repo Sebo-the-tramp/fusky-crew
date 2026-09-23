@@ -78,11 +78,12 @@ def test_cors_is_limited_to_configured_origin() -> None:
         headers={
             "Origin": "https://example.test",
             "Access-Control-Request-Method": "GET",
-            "Access-Control-Request-Headers": "Authorization",
+            "Access-Control-Request-Headers": "Authorization,skip_zrok_interstitial",
         },
     )
     assert allowed.status_code == 200
     assert allowed.headers["access-control-allow-origin"] == "https://example.test"
+    assert "skip_zrok_interstitial" in allowed.headers["access-control-allow-headers"].lower()
 
     denied = client.options(
         "/api/location",
