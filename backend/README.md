@@ -1,11 +1,14 @@
 # FUSKY tracking bridge
 
-FastAPI bridge between FindMy.py and the public crew website. It returns only the latest
-latitude/longitude report to a browser that supplies the shared bearer token. Apple credentials,
+FastAPI bridge for Garmin LiveTrack and the optional Find My fallback. It returns only the latest
+latitude/longitude report to a browser that supplies the shared bearer token. Garmin mode reads a
+public LiveTrack capability URL and needs no Garmin account credentials. The response includes the
+latest position plus the session's travelled track, allowing the frontend to overlay it on the GPX.
+Apple credentials,
 account sessions and accessory keys stay in `backend/secrets/`, which Git ignores.
 
-This uses unofficial, reverse-engineered Find My endpoints. It can break when Apple changes its
-services, and reports may be delayed. It is not a safety or emergency-tracking system.
+Both integrations are unofficial and can break when Garmin or Apple changes its services. This is
+not a safety or emergency-tracking system.
 
 ## 1. Run safely in mock mode
 
@@ -33,7 +36,28 @@ Open the site's `/live/` page and enter `http://YOUR_MAC_LAN_IP:8000` plus the t
 when the site is also served over HTTP on the LAN. A public HTTPS GitHub Pages site requires an
 HTTPS backend; browsers block requests from HTTPS pages to an HTTP backend.
 
-## 2. Create the Apple login session
+## 2. Track Garmin LiveTrack
+
+Leave `LOCATION_PROVIDER=mock`; the dedicated Garmin endpoint is available independently of the
+fallback provider. Start a LiveTrack session, copy the session URL from Garmin Connect, then enter
+that URL, the tracking API URL and `TRACKING_ACCESS_TOKEN` on the site's `/live/` page.
+`GARMIN_DEVICE_NAME` controls the Garmin label independently from the `DEVICE_NAME` used by Find My.
+
+The frontend calls `GET /api/garmin/location` with the session URL in the
+`X-Garmin-LiveTrack-Url` header. The endpoint accepts only HTTPS session links on
+`livetrack.garmin.com`, caches Garmin reads for `CACHE_SECONDS`, and returns the newest point. It
+scrapes Garmin's public Next.js page because Garmin provides no supported consumer LiveTrack feed;
+the parser may require maintenance if Garmin changes that page.
+
+Test it directly:
+
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-Garmin-LiveTrack-Url: YOUR_GARMIN_SESSION_URL" \
+  http://127.0.0.1:8000/api/garmin/location
+```
+
+## 3. Create the Apple login session
 
 Do this interactively, never in a deployment or CI job:
 
@@ -46,7 +70,7 @@ The script prompts for the Apple Account password and 2FA, then writes
 `secrets/account.json` with owner-only file permissions. FindMy.py recommends reusing the saved
 session rather than creating a new virtual device/login each time.
 
-## 3. Export an official AirTag or iPhone
+## 4. Export an official AirTag or iPhone
 
 FindMy.py needs the official device's decryption state as `secrets/device.json`.
 
@@ -62,7 +86,7 @@ FindMy.py needs the official device's decryption state as `secrets/device.json`.
 Copy the JSON for the intended device to `backend/secrets/device.json`. Never send or commit it:
 it contains keys that can retrieve/decrypt that device's Find My reports.
 
-## 4. Enable the real provider
+## 5. Enable the Find My provider
 
 Update `.env`:
 
@@ -86,7 +110,7 @@ Then run the same `uvicorn` command. The service:
 - sets `Cache-Control: no-store`; and
 - never serializes the Apple session, accessory state or report key to the browser.
 
-## 5. Deployment
+## 6. Deployment
 
 The included `Dockerfile` can run on a private server or container host. Mount `secrets/` as a
 persistent private volume rather than copying it into an image. Terminate TLS in front of the

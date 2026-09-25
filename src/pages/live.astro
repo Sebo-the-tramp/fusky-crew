@@ -10,15 +10,55 @@ const defaultApiUrl = import.meta.env.PUBLIC_TRACKING_API_URL ?? '';
 <header><div class="wrap">
   <div class="kicker">FUSKY 55K • PROTECTED TRACKING</div>
   <h1>Live position</h1>
-  <div class="muted">Latest available Find My report, not continuous GPS.</div>
+  <div class="muted">Share the runner's official Garmin LiveTrack session with the crew.</div>
 </div></header>
 
 <main><div class="wrap">
   <a class="back" href={baseUrl}>← Crew command</a>
 
-  <section class="card"><div class="pad">
-    <div class="eyebrow">Backend connection</div>
-    <h2>Connect this device</h2>
+  <section class="card garmin-card"><div class="pad">
+    <div class="eyebrow">Garmin Forerunner 965</div>
+    <h2>Share today's LiveTrack session</h2>
+    <ol class="setup-steps">
+      <li>Start LiveTrack and the race activity in Garmin Connect.</li>
+      <li>Tap <strong>Share</strong> beside the active session and copy its link.</li>
+      <li>Paste it below and connect the tracking bridge.</li>
+    </ol>
+    <div id="garmin-config" class="connect-grid" data-home-url={baseUrl}>
+      <div class="field">
+        <label for="garmin-url">Garmin LiveTrack session URL</label>
+        <input id="garmin-url" type="url" inputmode="url" autocomplete="off" placeholder="https://livetrack.garmin.com/session/…/token/…">
+      </div>
+      <div class="field">
+        <label for="garmin-api-url">Tracking API URL</label>
+        <input id="garmin-api-url" type="url" inputmode="url" placeholder="https://tracker.example.com">
+      </div>
+      <div class="field">
+        <label for="garmin-access-token">Crew access token</label>
+        <input id="garmin-access-token" type="password" autocomplete="off" placeholder="Shared privately with crew">
+      </div>
+      <div class="connect-actions">
+        <button id="connect-garmin" class="button" type="button">Show on map</button>
+        <button id="create-garmin-share-link" class="button button-secondary" type="button">Create crew link</button>
+        <a id="open-garmin" class="button button-secondary" href="#" target="_blank" rel="noopener noreferrer" hidden>Open Garmin ↗</a>
+        <span id="garmin-state" class="connection-state" data-state="idle">Waiting for today's link</span>
+      </div>
+      <div id="garmin-share-field" class="field" hidden>
+        <label for="garmin-share-url">Private crew link — anyone with this link can see the position</label>
+        <div class="share-row">
+          <input id="garmin-share-url" type="text" readonly>
+          <button id="copy-garmin-share-link" class="button button-secondary" type="button">Copy</button>
+        </div>
+      </div>
+    </div>
+    <p class="privacy-callout">The Garmin session address, API address and access token are kept after <code>#</code> in the crew link and removed from the address bar when opened. Treat the original link like a password.</p>
+  </div></section>
+
+  <details id="legacy-tracking" class="card legacy-tracking">
+    <summary>Find My backend fallback</summary>
+    <div class="pad legacy-tracking-content">
+    <div class="eyebrow">Optional fallback</div>
+    <h2>Connect the Find My bridge</h2>
     <div id="tracker-config" class="connect-grid" data-default-api={defaultApiUrl} data-home-url={baseUrl}>
       <div class="field"><label for="api-url">Tracking API URL</label><input id="api-url" type="url" inputmode="url" placeholder="https://tracker.example.com"></div>
       <div class="field"><label for="access-token">Crew access token</label><input id="access-token" type="password" autocomplete="off" placeholder="Shared privately with crew"></div>
@@ -37,18 +77,26 @@ const defaultApiUrl = import.meta.env.PUBLIC_TRACKING_API_URL ?? '';
     </div>
     <p class="privacy-callout">A crew link stores the API address and token after <code>#</code>, so they are not sent to GitHub Pages or included in HTTP referrer headers. The page removes them from the address bar after opening. Anyone who keeps or forwards the original link has access until you rotate the token.</p>
     <p class="privacy-callout">For LAN use, share the page served from your Mac over HTTP. The public HTTPS GitHub page can only connect to an HTTPS tracking API.</p>
-  </div></section>
+    </div>
+  </details>
 
-  <section class="card"><div id="live-map" aria-label="Map showing latest runner position"></div></section>
+  <section class="card map-card">
+    <div id="live-map" aria-label="FUSKY race course and Garmin LiveTrack map"></div>
+    <div class="map-legend" aria-label="Map legend">
+      <span><i class="legend-line legend-route"></i>Planned GPX</span>
+      <span><i class="legend-line legend-garmin"></i>Garmin trail</span>
+      <span><i class="legend-dot"></i>Latest position</span>
+    </div>
+  </section>
 
-  <section class="card"><div class="pad">
+  <section id="location-readout" class="card" hidden><div class="pad">
     <div class="live-readout">
       <div class="live-value"><span>Device</span><strong id="device-name">—</strong></div>
       <div class="live-value"><span>Report age</span><strong id="report-age">—</strong></div>
       <div class="live-value"><span>Accuracy</span><strong id="accuracy">—</strong></div>
     </div>
     <p id="reported-at" class="mini">No location received yet.</p>
-    <p class="note">Find My reports can be delayed and depend on nearby Apple devices. Never use this screen as the only safety system.</p>
+    <p id="tracking-note" class="note">Live location is supplemental. Never use this screen as the only safety system.</p>
   </div></section>
 </div></main>
 
@@ -57,6 +105,20 @@ import L from 'leaflet';
 import track from '../data/track.json';
 
 const config = document.querySelector<HTMLElement>('#tracker-config');
+const garminConfig = document.querySelector<HTMLElement>('#garmin-config');
+const garminInput = document.querySelector<HTMLInputElement>('#garmin-url');
+const garminApiInput = document.querySelector<HTMLInputElement>('#garmin-api-url');
+const garminTokenInput = document.querySelector<HTMLInputElement>('#garmin-access-token');
+const connectGarminButton = document.querySelector<HTMLButtonElement>('#connect-garmin');
+const openGarminLink = document.querySelector<HTMLAnchorElement>('#open-garmin');
+const createGarminShareButton = document.querySelector<HTMLButtonElement>('#create-garmin-share-link');
+const garminShareField = document.querySelector<HTMLElement>('#garmin-share-field');
+const garminShareInput = document.querySelector<HTMLInputElement>('#garmin-share-url');
+const copyGarminShareButton = document.querySelector<HTMLButtonElement>('#copy-garmin-share-link');
+const garminStateNode = document.querySelector<HTMLElement>('#garmin-state');
+const legacyTracking = document.querySelector<HTMLDetailsElement>('#legacy-tracking');
+const locationReadout = document.querySelector<HTMLElement>('#location-readout');
+const trackingNote = document.querySelector<HTMLElement>('#tracking-note');
 const apiInput = document.querySelector<HTMLInputElement>('#api-url');
 const tokenInput = document.querySelector<HTMLInputElement>('#access-token');
 const connectButton = document.querySelector<HTMLButtonElement>('#connect');
@@ -66,7 +128,9 @@ const shareInput = document.querySelector<HTMLInputElement>('#share-url');
 const copyShareButton = document.querySelector<HTMLButtonElement>('#copy-share-link');
 const stateNode = document.querySelector<HTMLElement>('#connection-state');
 const map = L.map('live-map');
-const route = L.polyline(track.map(point => [point.lat, point.lng]), { color:'#ff5a36', weight:4, opacity:.7 }).addTo(map);
+const route = L.polyline(track.map(point => [point.lat, point.lng]), { color:'#ff5a36', weight:4, opacity:.85 })
+  .bindTooltip('Planned GPX route')
+  .addTo(map);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom:19,
@@ -76,21 +140,102 @@ map.fitBounds(route.getBounds(), { padding:[18,18] });
 
 let marker: L.CircleMarker | undefined;
 let accuracyCircle: L.Circle | undefined;
+let garminTrail: L.Polyline | undefined;
 let pollTimer: number | undefined;
 let firstLocation = true;
 let lastReportTime: Date | undefined;
 
 const savedApi = localStorage.getItem('fusky-tracking-api');
-if (apiInput) apiInput.value = savedApi || config?.dataset.defaultApi || '';
+const localApi = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+  ? 'http://127.0.0.1:8000'
+  : '';
+if (apiInput) apiInput.value = savedApi || config?.dataset.defaultApi || localApi;
+if (garminApiInput) garminApiInput.value = savedApi || config?.dataset.defaultApi || localApi;
 
 const sharedParams = new URLSearchParams(window.location.hash.slice(1));
+const sharedGarmin = sharedParams.get('garmin')?.trim() ?? '';
 const sharedApi = sharedParams.get('api')?.trim() ?? '';
 const sharedToken = sharedParams.get('token') ?? '';
 const hasSharedConnection = Boolean(sharedApi && sharedToken);
+if (sharedGarmin || hasSharedConnection) {
+  history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+}
 if (hasSharedConnection) {
   if (apiInput) apiInput.value = sharedApi;
   if (tokenInput) tokenInput.value = sharedToken;
-  history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+  if (garminApiInput) garminApiInput.value = sharedApi;
+  if (garminTokenInput) garminTokenInput.value = sharedToken;
+  if (!sharedGarmin && legacyTracking) legacyTracking.open = true;
+}
+
+function setGarminState(message: string, state: 'idle' | 'live' | 'error') {
+  if (!garminStateNode) return;
+  garminStateNode.textContent = message;
+  garminStateNode.dataset.state = state;
+}
+
+function normalizedGarminUrl(value: string) {
+  let parsed: URL;
+  try {
+    parsed = new URL(value.trim());
+  } catch {
+    throw new Error('Paste the complete Garmin LiveTrack link.');
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+  if (parsed.protocol !== 'https:' || hostname !== 'livetrack.garmin.com') {
+    throw new Error('Use an official https://livetrack.garmin.com link.');
+  }
+  if (!/^\/session\/[^/]+\/token\/[^/]+\/?$/i.test(parsed.pathname)) {
+    throw new Error('This does not look like a complete Garmin session link.');
+  }
+  parsed.hash = '';
+  return parsed.toString();
+}
+
+function activateGarminLink(value: string) {
+  const url = normalizedGarminUrl(value);
+  if (garminInput) garminInput.value = url;
+  if (openGarminLink) {
+    openGarminLink.href = url;
+    openGarminLink.hidden = false;
+  }
+  return url;
+}
+
+function normalizedApiBase(value: string) {
+  let parsed: URL;
+  try {
+    parsed = new URL(value.trim());
+  } catch {
+    throw new Error('Enter the complete tracking API URL.');
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    throw new Error('The API URL must start with http:// or https://.');
+  }
+  return parsed.toString().replace(/\/$/, '');
+}
+
+function garminCrewLink() {
+  const garmin = activateGarminLink(garminInput?.value ?? '');
+  const api = normalizedApiBase(garminApiInput?.value ?? '');
+  const token = garminTokenInput?.value ?? '';
+  if (!token) throw new Error('Enter the crew access token.');
+  const pageUrl = new URL(garminConfig?.dataset.homeUrl ?? '/', window.location.origin);
+  pageUrl.hash = new URLSearchParams({ garmin, api, token }).toString();
+  return pageUrl.toString();
+}
+
+async function copyGarminCrewLink() {
+  if (!garminShareInput?.value) return;
+  try {
+    await navigator.clipboard.writeText(garminShareInput.value);
+    setGarminState('Crew link copied', 'live');
+  } catch {
+    garminShareInput.focus();
+    garminShareInput.select();
+    setGarminState('Crew link ready — copy the selected text', 'idle');
+  }
 }
 
 function setState(message: string, state: 'idle' | 'loading' | 'live' | 'error') {
@@ -104,6 +249,11 @@ function endpointFor(base: string) {
   return clean.endsWith('/api/location') ? clean : `${clean}/api/location`;
 }
 
+function garminEndpointFor(base: string) {
+  const clean = base.trim().replace(/\/$/, '').replace(/\/api\/location$/, '');
+  return clean.endsWith('/api/garmin/location') ? clean : `${clean}/api/garmin/location`;
+}
+
 function ageLabel(date: Date) {
   const seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
   if (seconds < 60) return `${seconds}s`;
@@ -114,6 +264,113 @@ function ageLabel(date: Date) {
 function refreshAge() {
   const node = document.querySelector('#report-age');
   if (node && lastReportTime) node.textContent = ageLabel(lastReportTime);
+}
+
+function renderLocation(location: any, sourceLabel: string) {
+  if (!Number.isFinite(location.lat) || !Number.isFinite(location.lon)) {
+    throw new Error('Tracking backend returned an invalid position.');
+  }
+  const point = L.latLng(location.lat, location.lon);
+  const radius = Number(location.accuracy_m) || 0;
+
+  const trailPoints = Array.isArray(location.track)
+    ? location.track
+        .filter((item: any) => Number.isFinite(item?.lat) && Number.isFinite(item?.lon))
+        .map((item: any) => L.latLng(item.lat, item.lon))
+    : [];
+  if (trailPoints.length > 0) {
+    if (!garminTrail) {
+      garminTrail = L.polyline(trailPoints, {
+        color: '#6fb7ff',
+        weight: 5,
+        opacity: .95
+      }).bindTooltip('Garmin travelled path').addTo(map);
+    } else {
+      garminTrail.setLatLngs(trailPoints);
+    }
+  }
+
+  if (!marker) {
+    marker = L.circleMarker(point, {
+      radius: 9,
+      color: '#fff',
+      weight: 3,
+      fillColor: '#6ee7a8',
+      fillOpacity: 1
+    }).addTo(map);
+  } else {
+    marker.setLatLng(point);
+  }
+  marker.bindPopup(`<b>${location.device_name}</b><br>${sourceLabel}`);
+
+  accuracyCircle?.remove();
+  if (radius > 0) {
+    accuracyCircle = L.circle(point, {
+      radius,
+      color: '#6ee7a8',
+      weight: 1,
+      fillOpacity: .08
+    }).addTo(map);
+  }
+  if (firstLocation) {
+    map.setView(point, 15);
+    firstLocation = false;
+  }
+
+  lastReportTime = new Date(location.reported_at);
+  document.querySelector('#device-name')!.textContent = location.device_name;
+  document.querySelector('#accuracy')!.textContent = radius ? `±${radius} m` : 'Not reported';
+  document.querySelector('#reported-at')!.textContent =
+    `Reported ${lastReportTime.toLocaleString()} • fetched ${new Date(location.fetched_at).toLocaleTimeString()}${location.stale ? ' • STALE' : ''}`;
+  refreshAge();
+  if (locationReadout) locationReadout.hidden = false;
+}
+
+async function responseError(response: Response) {
+  if (response.status === 401) return 'Access token rejected.';
+  try {
+    const body = await response.json();
+    if (typeof body.detail === 'string') return body.detail;
+  } catch {
+    // Fall back to the HTTP status below.
+  }
+  return `Backend returned ${response.status}.`;
+}
+
+async function fetchGarminLocation() {
+  const garmin = activateGarminLink(garminInput?.value ?? '');
+  const api = normalizedApiBase(garminApiInput?.value ?? '');
+  const token = garminTokenInput?.value ?? '';
+  if (!token) throw new Error('Enter the crew access token.');
+
+  connectGarminButton?.setAttribute('disabled', '');
+  setGarminState('Fetching Garmin position…', 'idle');
+  try {
+    const response = await fetch(garminEndpointFor(api), {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'X-Garmin-LiveTrack-Url': garmin,
+        skip_zrok_interstitial: 'true'
+      },
+      cache: 'no-store'
+    });
+    if (!response.ok) throw new Error(await responseError(response));
+    const location = await response.json();
+    renderLocation(location, 'Garmin LiveTrack report');
+    if (trackingNote) trackingNote.textContent = 'Garmin LiveTrack is unofficially bridged into this map. Keep the official race tracker and direct phone contact as safety backups.';
+    localStorage.setItem('fusky-tracking-api', api);
+    setGarminState(location.stale ? 'Connected • Garmin report is stale' : 'Connected • polling every 30s', location.stale ? 'error' : 'live');
+  } finally {
+    connectGarminButton?.removeAttribute('disabled');
+  }
+}
+
+async function fetchGarminSafely() {
+  try {
+    await fetchGarminLocation();
+  } catch (error) {
+    setGarminState(error instanceof Error ? error.message : 'Unable to fetch Garmin LiveTrack.', 'error');
+  }
 }
 
 async function fetchLocation() {
@@ -136,24 +393,8 @@ async function fetchLocation() {
     });
     if (!response.ok) throw new Error(response.status === 401 ? 'Access token rejected.' : `Backend returned ${response.status}.`);
     const location = await response.json();
-    const point = L.latLng(location.lat, location.lon);
-    const radius = location.accuracy_m ?? 0;
-
-    if (!marker) marker = L.circleMarker(point, { radius:9, color:'#fff', weight:3, fillColor:'#6ee7a8', fillOpacity:1 }).addTo(map);
-    else marker.setLatLng(point);
-
-    if (accuracyCircle) accuracyCircle.remove();
-    if (radius > 0) accuracyCircle = L.circle(point, { radius, color:'#6ee7a8', weight:1, fillOpacity:.08 }).addTo(map);
-    if (firstLocation) {
-      map.setView(point, 15);
-      firstLocation = false;
-    }
-
-    lastReportTime = new Date(location.reported_at);
-    document.querySelector('#device-name')!.textContent = location.device_name;
-    document.querySelector('#accuracy')!.textContent = radius ? `±${radius} m` : 'Unknown';
-    document.querySelector('#reported-at')!.textContent = `Reported ${lastReportTime.toLocaleString()} • fetched ${new Date(location.fetched_at).toLocaleTimeString()}${location.stale ? ' • STALE' : ''}`;
-    refreshAge();
+    renderLocation(location, 'Latest Find My report');
+    if (trackingNote) trackingNote.textContent = 'Find My reports can be delayed and depend on nearby Apple devices. Never use this screen as the only safety system.';
     localStorage.setItem('fusky-tracking-api', api);
     setState(location.stale ? 'Connected • report is stale' : 'Connected • polling every 30s', location.stale ? 'error' : 'live');
   } catch (error) {
@@ -167,6 +408,12 @@ function startPolling() {
   if (pollTimer) window.clearInterval(pollTimer);
   void fetchLocation();
   pollTimer = window.setInterval(() => void fetchLocation(), 30_000);
+}
+
+function startGarminPolling() {
+  if (pollTimer) window.clearInterval(pollTimer);
+  void fetchGarminSafely();
+  pollTimer = window.setInterval(() => void fetchGarminSafely(), 30_000);
 }
 
 function crewLink() {
@@ -207,7 +454,35 @@ createShareButton?.addEventListener('click', () => {
 });
 copyShareButton?.addEventListener('click', () => void copyCrewLink());
 
-if (hasSharedConnection) startPolling();
+garminInput?.addEventListener('input', () => {
+  if (openGarminLink) openGarminLink.hidden = true;
+  if (garminShareField) garminShareField.hidden = true;
+  setGarminState('Waiting for today\'s link', 'idle');
+});
+connectGarminButton?.addEventListener('click', startGarminPolling);
+createGarminShareButton?.addEventListener('click', () => {
+  try {
+    const link = garminCrewLink();
+    if (garminShareInput) garminShareInput.value = link;
+    if (garminShareField) garminShareField.hidden = false;
+    void copyGarminCrewLink();
+  } catch (error) {
+    setGarminState(error instanceof Error ? error.message : 'Unable to use this Garmin link.', 'error');
+  }
+});
+copyGarminShareButton?.addEventListener('click', () => void copyGarminCrewLink());
+
+if (sharedGarmin) {
+  try {
+    activateGarminLink(sharedGarmin);
+    if (hasSharedConnection) startGarminPolling();
+    else setGarminState('Enter the tracking API URL and token.', 'error');
+  } catch (error) {
+    setGarminState(error instanceof Error ? error.message : 'Unable to use this Garmin link.', 'error');
+  }
+} else if (hasSharedConnection) {
+  startPolling();
+}
 window.setInterval(refreshAge, 5_000);
 </script>
 </Base>

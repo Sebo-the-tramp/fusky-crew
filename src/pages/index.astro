@@ -17,6 +17,7 @@ const formatWindow = (start: string, end: string) => start === end ? start : `${
 
 <main><div class="wrap">
 <nav class="quick-links" aria-label="Race resources">
+  <a class="quick-link" href={`${baseUrl}live/`}><span>Race-day tracking</span><strong>Live position →</strong></a>
   <a class="quick-link" href={`${baseUrl}nutrition/`}><span>Runner plan</span><strong>Nutrition →</strong></a>
   <a class="quick-link" href={`${baseUrl}equipment/`}><span>Camera plan</span><strong>Equipment →</strong></a>
   <a class="quick-link" href={`${baseUrl}FUSKY-55K-2026.gpx`} download><span>Offline route</span><strong>Download GPX ↓</strong></a>
@@ -33,7 +34,23 @@ const formatWindow = (start: string, end: string) => start === end ? start : `${
     </div>
   </div>
 </section>
-<section class="card"><div id="map"></div></section>
+<section id="home-garmin-live" class="card garmin-live-card" hidden><div class="pad">
+  <div class="eyebrow">Garmin LiveTrack</div>
+  <h2>Follow the runner live</h2>
+  <p class="muted">The latest Garmin position is shown on the FUSKY course map below.</p>
+  <a id="home-open-garmin" class="button button-secondary" href="#" target="_blank" rel="noopener noreferrer">Open directly in Garmin ↗</a>
+  <p id="home-garmin-state" class="connection-state" data-state="idle">Connecting to LiveTrack…</p>
+  <p class="note">Updates require the Forerunner 965 to remain connected to the runner's phone over Bluetooth, with Garmin Connect and mobile data available.</p>
+</div></section>
+
+<section class="card map-card">
+  <div id="map" aria-label="FUSKY race course and Garmin LiveTrack map"></div>
+  <div class="map-legend" aria-label="Map legend">
+    <span><i class="legend-line legend-route"></i>Planned GPX</span>
+    <span><i class="legend-line legend-garmin"></i>Garmin trail</span>
+    <span><i class="legend-dot"></i>Latest position</span>
+  </div>
+</section>
 
 <section id="home-live-position" class="card" hidden><div class="pad">
   <div class="eyebrow">Protected live position</div>
@@ -43,7 +60,7 @@ const formatWindow = (start: string, end: string) => start === end ? start : `${
     <div class="live-value"><span>Accuracy</span><strong id="home-accuracy">—</strong></div>
   </div>
   <p id="home-reported-at" class="mini">Waiting for a location report.</p>
-  <p class="note">Find My reports can be delayed. Never use this screen as the only safety system.</p>
+  <p id="home-tracking-note" class="note">Live location is supplemental. Never use this screen as the only safety system.</p>
 </div></section>
 
 <div class="desktop2">
@@ -90,7 +107,9 @@ import stops from '../data/stops.json';
 
 const map=L.map('map');
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
-const line=L.polyline(track.map(p=>[p.lat,p.lng]),{color:'#ff5a36',weight:4,opacity:.95}).addTo(map);
+const line=L.polyline(track.map(p=>[p.lat,p.lng]),{color:'#ff5a36',weight:4,opacity:.95})
+  .bindTooltip('Planned GPX route')
+  .addTo(map);
 map.fitBounds(line.getBounds(),{padding:[18,18]});
 stops.forEach(s=>{
   const time=s.windowStart===s.windowEnd?s.windowStart:`${s.windowStart}–${s.windowEnd}`;
@@ -128,15 +147,36 @@ updateCountdown();
 window.setInterval(updateCountdown, 1_000);
 
 const liveSection = document.querySelector<HTMLElement>('#home-live-position');
+const garminLiveSection = document.querySelector<HTMLElement>('#home-garmin-live');
+const garminLiveLink = document.querySelector<HTMLAnchorElement>('#home-open-garmin');
+const garminLiveState = document.querySelector<HTMLElement>('#home-garmin-state');
+const homeTrackingNote = document.querySelector<HTMLElement>('#home-tracking-note');
 const sharedParams = new URLSearchParams(window.location.hash.slice(1));
+const sharedGarmin = sharedParams.get('garmin')?.trim() ?? '';
 const sharedApi = sharedParams.get('api')?.trim() ?? '';
 const sharedToken = sharedParams.get('token') ?? '';
 let liveMarker: L.CircleMarker | undefined;
 let accuracyCircle: L.Circle | undefined;
+let garminTrail: L.Polyline | undefined;
 let lastReportTime: Date | undefined;
+
+function normalizedGarminUrl(value: string) {
+  const parsed = new URL(value);
+  const hostname = parsed.hostname.toLowerCase();
+  if (parsed.protocol !== 'https:' || hostname !== 'livetrack.garmin.com') throw new Error('Invalid Garmin LiveTrack URL');
+  if (!/^\/session\/[^/]+\/token\/[^/]+\/?$/i.test(parsed.pathname)) {
+    throw new Error('Incomplete Garmin LiveTrack URL');
+  }
+  parsed.hash = '';
+  return parsed.toString();
+}
 
 function endpointFor(base: string) {
   const clean = base.replace(/\/$/, '');
+  if (sharedGarmin) {
+    const root = clean.replace(/\/api\/location$/, '');
+    return root.endsWith('/api/garmin/location') ? root : `${root}/api/garmin/location`;
+  }
   return clean.endsWith('/api/location') ? clean : `${clean}/api/location`;
 }
 
@@ -154,20 +194,51 @@ function refreshAge() {
 
 async function fetchSharedLocation() {
   try {
+    const garmin = sharedGarmin ? normalizedGarminUrl(sharedGarmin) : '';
     const response = await fetch(endpointFor(sharedApi), {
       headers: {
         Authorization: `Bearer ${sharedToken}`,
+        ...(garmin ? { 'X-Garmin-LiveTrack-Url': garmin } : {}),
         skip_zrok_interstitial: 'true'
       },
       cache: 'no-store'
     });
-    if (!response.ok) return;
+    if (!response.ok) {
+      let message = `Tracking backend returned ${response.status}.`;
+      try {
+        const body = await response.json();
+        if (typeof body.detail === 'string') message = body.detail;
+      } catch {
+        // Keep the HTTP status message.
+      }
+      if (garmin && garminLiveState) {
+        garminLiveState.textContent = message;
+        garminLiveState.dataset.state = 'error';
+      }
+      return;
+    }
 
     const location = await response.json();
     if (!Number.isFinite(location.lat) || !Number.isFinite(location.lon)) return;
 
     const point = L.latLng(location.lat, location.lon);
     const radius = Number(location.accuracy_m) || 0;
+    const trailPoints = Array.isArray(location.track)
+      ? location.track
+          .filter((item: any) => Number.isFinite(item?.lat) && Number.isFinite(item?.lon))
+          .map((item: any) => L.latLng(item.lat, item.lon))
+      : [];
+    if (trailPoints.length > 0) {
+      if (!garminTrail) {
+        garminTrail = L.polyline(trailPoints, {
+          color: '#6fb7ff',
+          weight: 5,
+          opacity: .95
+        }).bindTooltip('Garmin travelled path').addTo(map);
+      } else {
+        garminTrail.setLatLngs(trailPoints);
+      }
+    }
     if (!liveMarker) {
       liveMarker = L.circleMarker(point, {
         radius: 10,
@@ -175,7 +246,7 @@ async function fetchSharedLocation() {
         weight: 3,
         fillColor: '#6ee7a8',
         fillOpacity: 1
-      }).bindPopup(`<b>${location.device_name}</b><br>Latest Find My report`).addTo(map);
+      }).bindPopup(`<b>${location.device_name}</b><br>${garmin ? 'Garmin LiveTrack report' : 'Latest Find My report'}`).addTo(map);
     } else {
       liveMarker.setLatLng(point);
     }
@@ -195,18 +266,43 @@ async function fetchSharedLocation() {
     document.querySelector('#home-accuracy')!.textContent = radius ? `±${radius} m` : 'Unknown';
     document.querySelector('#home-reported-at')!.textContent =
       `Reported ${lastReportTime.toLocaleString()}${location.stale ? ' • STALE' : ''}`;
+    if (homeTrackingNote) {
+      homeTrackingNote.textContent = garmin
+        ? 'Garmin LiveTrack is unofficially bridged into this map. Keep the official race tracker and direct phone contact as safety backups.'
+        : 'Find My reports can be delayed. Never use this screen as the only safety system.';
+    }
     refreshAge();
+    if (garmin && garminLiveState) {
+      garminLiveState.textContent = location.stale ? 'Connected • report is stale' : 'Connected • updating every 30s';
+      garminLiveState.dataset.state = location.stale ? 'error' : 'live';
+    }
     if (liveSection?.hidden) {
       liveSection.hidden = false;
       map.setView(point, 14);
     }
   } catch {
-    // Invalid, unreachable, or expired share links reveal no tracking UI.
+    if (sharedGarmin && garminLiveState) {
+      garminLiveState.textContent = 'Unable to reach the tracking bridge.';
+      garminLiveState.dataset.state = 'error';
+    }
+  }
+}
+
+if (sharedGarmin || (sharedApi && sharedToken)) {
+  history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+}
+
+if (sharedGarmin) {
+  try {
+    const garmin = normalizedGarminUrl(sharedGarmin);
+    if (garminLiveLink) garminLiveLink.href = garmin;
+    if (garminLiveSection) garminLiveSection.hidden = false;
+  } catch {
+    // Invalid Garmin capability links reveal no tracking UI.
   }
 }
 
 if (sharedApi && sharedToken) {
-  history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
   void fetchSharedLocation();
   window.setInterval(() => void fetchSharedLocation(), 30_000);
   window.setInterval(refreshAge, 5_000);

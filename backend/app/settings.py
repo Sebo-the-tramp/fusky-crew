@@ -22,6 +22,7 @@ class Settings:
     cache_seconds: int
     stale_after_seconds: int
     device_name: str
+    garmin_device_name: str
     account_path: Path
     device_path: Path
     anisette_path: Path
@@ -44,6 +45,7 @@ class Settings:
             cache_seconds=max(5, int(os.getenv("CACHE_SECONDS", "30"))),
             stale_after_seconds=max(60, int(os.getenv("STALE_AFTER_SECONDS", "600"))),
             device_name=os.getenv("DEVICE_NAME", "FUSKY tracker"),
+            garmin_device_name=os.getenv("GARMIN_DEVICE_NAME", "Garmin Forerunner 965"),
             account_path=Path(os.getenv("FINDMY_ACCOUNT_PATH", "secrets/account.json")),
             device_path=Path(os.getenv("FINDMY_DEVICE_PATH", "secrets/device.json")),
             anisette_path=Path(os.getenv("FINDMY_ANISETTE_PATH", "secrets/ani_libs.bin")),

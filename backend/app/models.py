@@ -7,6 +7,15 @@ from pydantic import BaseModel, Field
 
 
 @dataclass(frozen=True)
+class TrackPointReading:
+    """One sanitized point in a recorded location trail."""
+
+    latitude: float
+    longitude: float
+    reported_at: datetime
+
+
+@dataclass(frozen=True)
 class LocationReading:
     """Provider-neutral location reading."""
 
@@ -16,6 +25,15 @@ class LocationReading:
     reported_at: datetime
     accuracy_m: int | None
     source: str
+    track: tuple[TrackPointReading, ...] = ()
+
+
+class TrackPointResponse(BaseModel):
+    """One browser-safe point in a recorded location trail."""
+
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+    reported_at: datetime
 
 
 class LocationResponse(BaseModel):
@@ -29,6 +47,7 @@ class LocationResponse(BaseModel):
     accuracy_m: int | None = Field(default=None, ge=0)
     source: str
     stale: bool
+    track: list[TrackPointResponse] = Field(default_factory=list)
 
 
 class HealthResponse(BaseModel):
